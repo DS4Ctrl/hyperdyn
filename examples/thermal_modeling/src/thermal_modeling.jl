@@ -1,5 +1,9 @@
 module thermal_modeling
 
-greet() = print("Hello World!")
+function greet()
+    println("Hello World!")
+end
+#greet() = print("Hello World!")
+greet();
 
 end # module
