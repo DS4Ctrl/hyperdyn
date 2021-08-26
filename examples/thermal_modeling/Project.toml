@@ -1,0 +1,8 @@
+name = "thermal_modeling"
+uuid = "2a37e500-e32d-4eaa-991b-4a5361c8439c"
+authors = ["wkirgsn <kirchgaessner@lea.upb.de>"]
+version = "0.1.0"
+
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
