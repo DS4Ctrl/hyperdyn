@@ -3,10 +3,10 @@ module thermal_modeling
 using Flux
 
 
-mutable struct HeatTransferLayer{U, V, T}
+mutable struct HeatTransferLayer{U,V,T}
     n_temps::Int
     n_targets::Int
-    conductance_net::Dense{U, Matrix{V}, Vector{T}}
+    conductance_net::Dense{U,Matrix{V},Vector{T}}
     adj_mat::Matrix{Int8}
 end
 
@@ -15,7 +15,7 @@ function HeatTransferLayer(n_input::Integer, n_temps::Integer, n_targets::Intege
     adj_mat = zeros(Int8, n_temps, n_temps)
     k = 1
     for col_j in 1:n_temps
-        for row_i in col_j+1:n_temps
+        for row_i in col_j + 1:n_temps
             adj_mat[row_i, col_j] = k
             k += 1
         end
@@ -36,36 +36,40 @@ function (m::HeatTransferLayer)(all_input)
     conductances = m.conductance_net(all_input)
     
     # subtract, scale, and sum
-    tmp = zeros(eltype(prev_out), size(prev_out))  # todo: this might be a field of HeatTransferLayer
+    tmp = hcat([sum(temps[j, :] .- prev_out[i, :] .* conductances[m.adj_mat[i, j], :] 
+                for j in 1:n_temps if j != i) 
+                    for i in 1:m.n_targets]...)'
+    # mutating arrays not allowed in zygote
+    """tmp = zeros(eltype(prev_out), size(prev_out))
     for i in 1:m.n_targets
         for j in 1:n_temps
             if j != i
-                # todo: Mutating arrays apparently not supported. Think of something different!
                 @. tmp[i, :] += (temps[j, :] - prev_out[i, :]) * conductances[m.adj_mat[i, j], :]
             end
         end
-    end
+    end"""
+
 
     return tmp
 end
 
 # specify what is trainable 
-Flux.@functor HeatTransferLayer (conductance_net, )
+Flux.@functor HeatTransferLayer (conductance_net,)
 
-mutable struct TNNCell{U <:Chain, V<:Real, S}
+mutable struct TNNCell{U <: Chain,V <: Real,S}
     sample_time::V
     ploss_net::U
     heat_net::HeatTransferLayer
-    caps:: Vector{V}
+    caps::Vector{V}
     prll::Parallel  # will be defined in inner constructor (no outer definition)
-    state0:: S
-    function TNNCell(sample_time::V, ploss_net::U, heat_net::HeatTransferLayer, caps::Vector{V}, init_hidden::S) where {U <: Chain, V <: Real, S}
-        new{U, V, S}(sample_time, ploss_net, heat_net, caps, Parallel(+, ploss_net, heat_net), init_hidden)
+    state0::S
+    function TNNCell(sample_time::V, ploss_net::U, heat_net::HeatTransferLayer, caps::Vector{V}, init_hidden::S) where {U <: Chain,V <: Real,S}
+        new{U,V,S}(sample_time, ploss_net, heat_net, caps, Parallel(+, ploss_net, heat_net), init_hidden)
     end
 end
 
 
-function TNNCell(n_input::U, n_temps::U, n_targets::U, init_hidden::S) where {U <: Integer, S}
+function TNNCell(n_input::U, n_temps::U, n_targets::U, init_hidden::S) where {U <: Integer,S}
     ploss_net = Chain(Dense(n_input + n_targets, 8, σ),
                       Dense(8, n_targets, σ))
     heat_transfer = HeatTransferLayer(n_input, n_temps, n_targets)
@@ -77,7 +81,7 @@ function (m::TNNCell)(prev_̂y, x)
     x_non_temps, x_temps = x
     xx = vcat(prev_̂y, x_temps, x_non_temps)
     rh_ode = m.prll(xx)
-    y = prev_̂y .+ m.sample_time .* 10f0 .^m.caps .* rh_ode
+    y = prev_̂y .+ m.sample_time .* 10f0.^m.caps .* rh_ode
     return y, prev_̂y
 end
 
