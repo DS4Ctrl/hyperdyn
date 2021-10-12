@@ -1,6 +1,7 @@
 module thermal_modeling
 
 using Flux
+using DiffEqFlux:FastChain, FastDense
 
 
 mutable struct HeatTransferLayer{U,V,T}
