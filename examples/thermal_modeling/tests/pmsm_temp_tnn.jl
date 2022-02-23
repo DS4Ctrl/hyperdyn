@@ -5,7 +5,7 @@ using thermal_modeling: TNNCell
 
 function main()
     println("Load CSV..")
-    data = CSV.File(joinpath(pwd(), "..", "data", "measures.csv")) |> DataFrame
+    data = CSV.File(joinpath(pwd(), "..", "..", "data", "measures.csv")) |> DataFrame
 
     println("Some FE..")
     # FE
